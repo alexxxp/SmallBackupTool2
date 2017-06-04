@@ -8,17 +8,20 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 
 public class Main {
 
-    private static LinkedList<HashMap<String, byte[]>> files = new LinkedList<>();
+    private static LinkedList<HashMap<String, SimpleFile>> files = new LinkedList<>();
+    private static LinkedList<Date> dates = new LinkedList<>();
     private static String SOURCE;
     private static String DEST;
     private static int PERIOD_OF_TIME;
     private static boolean isEnded = false;
     private static int MAX_SIZE;
+    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm:ss - dd.MM.yy", Locale.GERMAN);
 
     public static void main(String[] args) throws Exception {
         SOURCE = args[0];
@@ -33,7 +36,7 @@ public class Main {
             @Override
             public void run() {
                 while (!isEnded) {
-                    HashMap<String, byte[]> map = loadFromFile(SOURCE);
+                    HashMap<String, SimpleFile> map = loadFromFile(SOURCE);
                     if (files.size() >= MAX_SIZE)
                         files.removeLast();
                     if (map.size() != 0)
@@ -59,9 +62,11 @@ public class Main {
 
         System.out.println("Enter how many backups to save on hard drive, available " + files.size() + ":");
         int num = sc.nextInt();
+        String sourceName = SOURCE.substring(SOURCE.lastIndexOf(File.separator));
         while (num > 0) {
-            HashMap<String, byte[]> map = files.pollFirst();
-            saveToFile(map, DEST + num);
+            HashMap<String, SimpleFile> map = files.pollFirst();
+            Date date = dates.pollFirst(); //get dates from end of the list
+            saveToFile(map, DEST + sourceName + " - " + simpleDateFormat.format(date));
             num--;
         }
 
@@ -70,9 +75,13 @@ public class Main {
 
 
     // save File in memory
-    public static HashMap<String, byte[]> loadFromFile(String source) {
-        HashMap<String, byte[]> map = null;
-        HashMap<String, byte[]> previousMap = null;
+    public static HashMap<String, SimpleFile> loadFromFile(String source) {
+        if (dates.size() >= MAX_SIZE)
+            dates.removeLast();
+        dates.add(new Date());
+
+        HashMap<String, SimpleFile> map = null;
+        HashMap<String, SimpleFile> previousMap = null;
         List<String> list = null;
 
         try {
@@ -84,17 +93,29 @@ public class Main {
             }
 
             setWritable(list, false);
+
             for (String str : list) {
+                File file = new File(str);
+                long lastModified = file.lastModified();
+
+                if (previousMap != null) {
+                    long previousLastModified = previousMap.get(str).getLastModified();
+                    if (previousLastModified != 0 && previousLastModified == lastModified) {
+                        map.put(str, previousMap.get(str));
+                        continue;
+                    }
+                }
+
                 FileInputStream in = new FileInputStream(str);
                 byte[] bytes = new byte[in.available()];
                 if (previousMap != null)
-                    prevBytes = previousMap.get(str);
+                    prevBytes = previousMap.get(str).getContent();
                 in.read(bytes);
                 in.close();
                 if (prevBytes != null && Arrays.equals(bytes, prevBytes)) {
-                    map.put(str, prevBytes);
+                    map.put(str, previousMap.get(str));
                 } else {
-                    map.put(str, bytes);
+                    map.put(str, new SimpleFile(str, bytes, lastModified));
                 }
             }
             setWritable(list, true);
@@ -106,16 +127,17 @@ public class Main {
     }
 
     // write File to disk in DEST File
-    public static void saveToFile(HashMap<String, byte[]> map, String dest) throws Exception {
+    public static void saveToFile(HashMap<String, SimpleFile> map, String dest) throws Exception {
         for (Map.Entry entry : map.entrySet()) {
             String path = (String) entry.getKey();
             String[] strings = path.split(SOURCE);
             String name = strings[1];
+            SimpleFile simpleFile = (SimpleFile) entry.getValue();
             Path absolutePath = Paths.get(dest + File.separator + name);
             if (Files.notExists(absolutePath.getParent()))
                 Files.createDirectories(absolutePath.getParent());
             FileOutputStream out = new FileOutputStream(absolutePath.toString());
-            out.write((byte[]) entry.getValue());
+            out.write(simpleFile.getContent());
             out.close();
         }
     }
