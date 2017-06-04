@@ -1,6 +1,8 @@
 package com.company;
 
 
+import com.sun.org.apache.bcel.internal.generic.IF_ACMPEQ;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -24,8 +26,8 @@ public class Main {
     private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm:ss - dd.MM.yy", Locale.GERMAN);
 
     public static void main(String[] args) throws Exception {
-        SOURCE = args[0];
-        DEST = args[1];
+        SOURCE = Paths.get(args[0]).normalize().toString();
+        DEST = Paths.get(args[1]).normalize().toString();
         Scanner sc = new Scanner(System.in);
         System.out.println("Enter how often program must save File in seconds:");
         PERIOD_OF_TIME = sc.nextInt();
@@ -99,7 +101,9 @@ public class Main {
                 long lastModified = file.lastModified();
 
                 if (previousMap != null) {
-                    long previousLastModified = previousMap.get(str).getLastModified();
+                    long previousLastModified = 0;
+                    if (previousMap.get(str) != null)
+                        previousLastModified = previousMap.get(str).getLastModified();
                     if (previousLastModified != 0 && previousLastModified == lastModified) {
                         map.put(str, previousMap.get(str));
                         continue;
@@ -108,7 +112,7 @@ public class Main {
 
                 FileInputStream in = new FileInputStream(str);
                 byte[] bytes = new byte[in.available()];
-                if (previousMap != null)
+                if (previousMap != null && previousMap.get(str) != null)
                     prevBytes = previousMap.get(str).getContent();
                 in.read(bytes);
                 in.close();
