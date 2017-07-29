@@ -1,8 +1,5 @@
 package com.company;
 
-
-import com.sun.org.apache.bcel.internal.generic.IF_ACMPEQ;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -39,10 +36,11 @@ public class Main {
             public void run() {
                 while (!isEnded) {
                     HashMap<String, SimpleFile> map = loadFromFile(SOURCE);
-                    if (files.size() >= MAX_SIZE)
-                        files.removeLast();
-                    if (map.size() != 0)
+                    if (map != null && map.size() != 0) {
                         files.addFirst(map);
+                        if (files.size() >= MAX_SIZE)
+                            files.removeLast();
+                    }
                     try {
                         Thread.sleep(PERIOD_OF_TIME * 1000);
                     } catch (InterruptedException e) {
@@ -78,9 +76,8 @@ public class Main {
 
     // save File in memory
     public static HashMap<String, SimpleFile> loadFromFile(String source) {
-        if (dates.size() >= MAX_SIZE)
-            dates.removeLast();
-        dates.add(new Date());
+        boolean folderIsChanged = false;
+
 
         HashMap<String, SimpleFile> map = null;
         HashMap<String, SimpleFile> previousMap = null;
@@ -120,14 +117,26 @@ public class Main {
                     map.put(str, previousMap.get(str));
                 } else {
                     map.put(str, new SimpleFile(str, bytes, lastModified));
+                    folderIsChanged = true;
                 }
             }
+
+            if (previousMap != null && previousMap.size() != map.size())
+                folderIsChanged = true;
+
             setWritable(list, true);
         } catch (IOException e) {
             setWritable(list, true);
             System.out.println(e.getMessage());
         }
-        return map;
+        if (folderIsChanged) {
+            if (dates.size() >= MAX_SIZE)
+                dates.removeLast();
+            dates.addFirst(new Date());
+            return map;
+        }
+        else
+            return null;
     }
 
     // write File to disk in DEST File
