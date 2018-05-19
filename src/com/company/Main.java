@@ -20,7 +20,7 @@ public class Main {
     private static int PERIOD_OF_TIME;
     private static boolean isEnded = false;
     private static int MAX_SIZE;
-    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh:mm:ss - dd.MM.yy", Locale.GERMAN);
+    private static SimpleDateFormat simpleDateFormat = new SimpleDateFormat("hh mm ss - dd.MM.yy", Locale.GERMAN);
 
     public static void main(String[] args) throws Exception {
         SOURCE = Paths.get(args[0]).normalize().toString();
@@ -143,10 +143,9 @@ public class Main {
     public static void saveToFile(HashMap<String, SimpleFile> map, String dest) throws Exception {
         for (Map.Entry entry : map.entrySet()) {
             String path = (String) entry.getKey();
-            String[] strings = path.split(SOURCE);
-            String name = strings[1];
+            Path name = Paths.get(path).getFileName();
             SimpleFile simpleFile = (SimpleFile) entry.getValue();
-            Path absolutePath = Paths.get(dest + File.separator + name);
+            Path absolutePath = Paths.get(dest + File.separator + name.toString());
             if (Files.notExists(absolutePath.getParent()))
                 Files.createDirectories(absolutePath.getParent());
             FileOutputStream out = new FileOutputStream(absolutePath.toString());
@@ -154,6 +153,7 @@ public class Main {
             out.close();
         }
     }
+
 
     // get all files in SOURCE
     public static List<String> getFileTree(String root) throws IOException {
